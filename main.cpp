@@ -15,7 +15,7 @@ struct vertice {
     int nome;
     int grau;
     //vector<int> adjacencias;
-    set<int> adjacencias;
+    vector<int> adjacencias;
 };
 
 struct grafo {
@@ -34,7 +34,6 @@ bool menorGrau(vertice a, vertice b);
 bool comparaNome(vertice a, vertice b);
 void removeVertice(grafo *sG, int n);
 grafo criaSubGrafo(vector<int> vertices);
-bool isAdjacente(vertice a, int b);
 
 grafo G;
 
@@ -138,7 +137,7 @@ vector<int> lerGrafo(char *nomeArquivo) {
         vertice v = {
                 i,              // nome
                 0,              // grau
-                set<int>()   // adjacencias
+                vector<int>()   // adjacencias
         };
 
         G.vertices.push_back(v);
@@ -154,14 +153,18 @@ vector<int> lerGrafo(char *nomeArquivo) {
         G.arestas[y-1][x-1] = 1;
 
         G.vertices[x-1].grau++;
-        G.vertices[x-1].adjacencias.insert(y-1);
+        G.vertices[x-1].adjacencias.push_back(y-1);
 
         G.vertices[y-1].grau++;
-        G.vertices[y-1].adjacencias.insert(x-1);
+        G.vertices[y-1].adjacencias.push_back(x-1);
 
     }
 
     arquivo.close();
+
+    for(int i=0; i<G.nVertices; i++) {
+        sort(G.vertices[i].adjacencias.begin(), G.vertices[i].adjacencias.end());
+    }
 
     sort(G.vertices.begin(), G.vertices.end(), comparaGrau);
     for(int i=0; i<G.nVertices; i++) {
@@ -221,8 +224,7 @@ bool testaClique(grafo sG) {
 
     for(int i=0; i<sG.nVertices-1; i++) {
         for(int j=i+1; j<sG.nVertices; j++) {
-            //if(!G.arestas[sG.vertices[j].nome][sG.vertices[i].nome]) {
-            if(!isAdjacente(sG.vertices[j], sG.vertices[i].nome)) {
+            if(!G.arestas[sG.vertices[j].nome][sG.vertices[i].nome]) {
                 return false;
             }
         }
@@ -251,8 +253,12 @@ void removeVertice(grafo *sG, int n) {
         }
 
         else{
-            if (sG->vertices[i].adjacencias.erase(n) == 1) {
-                sG->vertices[i].grau--;
+            for(int j=0; j<sG->vertices[i].grau && sG->vertices[i].adjacencias[j]<=n; j++) {
+                if(sG->vertices[i].adjacencias[j] == n) {
+                    sG->vertices[i].adjacencias.erase(sG->vertices[i].adjacencias.begin()+j);
+                    sG->vertices[i].grau--;
+                    sG->nArestas--;
+                }
             }
         }
 
@@ -284,12 +290,3 @@ grafo criaSubGrafo(vector<int> vertices) {
     return sG;
 
 }
-
-bool isAdjacente(vertice a, int b) {
-    auto it = a.adjacencias.find(b);
-    if(it == a.adjacencias.end()) {
-        return false;
-    }
-    return true;
-}
-
