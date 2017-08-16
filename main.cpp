@@ -4,6 +4,7 @@
 #include <chrono>
 #include <time.h>
 #include <vector>
+#include <set>
 #include <random>
 #include <fstream>
 #include <iomanip>
@@ -13,7 +14,8 @@ using namespace std;
 struct vertice {
     int nome;
     int grau;
-    vector<int> adjacencias;
+    //vector<int> adjacencias;
+    set<int> adjacencias;
 };
 
 struct grafo {
@@ -24,7 +26,7 @@ struct grafo {
 };
 
 
-vector<int> lerGrafo(char *arquivo);
+vector<int> lerGrafo(char *nomeArquivo);
 void printGrafo(grafo g);
 bool testaClique(grafo sG);
 bool comparaGrau(vertice a, vertice b);
@@ -32,6 +34,7 @@ bool menorGrau(vertice a, vertice b);
 bool comparaNome(vertice a, vertice b);
 void removeVertice(grafo *sG, int n);
 grafo criaSubGrafo(vector<int> vertices);
+bool isAdjacente(vertice a, int b);
 
 grafo G;
 
@@ -53,25 +56,23 @@ int main(int argc, char *argv[]) {
     ordem = lerGrafo(argv[1]);
 
     //printGrafo(G);
-    cout << "\nG = (" << G.nVertices << "," << G.nArestas << ")" << endl;
+    cout << "\n\nG = (" << G.nVertices << "," << G.nArestas << ")" << endl;
 
     begin = clock();
 
     for(int j=0; j<G.nVertices; j++) {
 
-        //cout << j << endl;
-
         verticesSubgrafo.clear();
-        verticesSubgrafo = G.vertices[ordem[j]].adjacencias;
         verticesSubgrafo.push_back(ordem[j]);
+        for(auto it=G.vertices[ordem[j]].adjacencias.begin(); it!=G.vertices[ordem[j]].adjacencias.end(); ++it) {
+            verticesSubgrafo.push_back(*it);
+        }
         sort(verticesSubgrafo.begin(), verticesSubgrafo.end());
 
         sG = criaSubGrafo(verticesSubgrafo);
 
 
-        while (!testaClique(sG) && sG.nVertices > wG) {
-
-            //cout << "          " << sG.nVertices << endl;
+        while(!testaClique(sG) && sG.nVertices > wG) {
 
             sort(sG.vertices.begin(), sG.vertices.end(), comparaGrau);
 
@@ -102,11 +103,11 @@ int main(int argc, char *argv[]) {
         cout << "Clique maxima nao encontrada." << endl;
     }
     else {
-        cout << endl << "w(G): " << wG << " | v={";
-        for (int i = 0; i < wG - 1; i++) {
-            cout << clique[i] << ", ";
+        cout << argv[1] << "\nw(G): " << wG << " | v={";
+        for (int i=0; i<wG-1; i++) {
+            cout << clique[i]+1 << ", ";
         }
-        cout << clique[wG - 1] << "} | T = " << tempo << "s" << endl;
+        cout << clique[wG-1]+1 << "} | T = " << tempo << "s" << endl << endl;
     }
 
     return 0;
@@ -127,17 +128,17 @@ vector<int> lerGrafo(char *nomeArquivo) {
     arquivo >> t >> t >> t >> t >> t;
     arquivo >> G.nVertices >> G.nArestas;
 
-    vector<char> temp (G.nVertices+1, 0);
+    vector<char> temp (G.nVertices, 0);
 
     //cria a matriz em branco e inicializa os vertices
-    for(int i=0; i<=G.nVertices; i++) {
+    for(int i=0; i<G.nVertices; i++) {
 
         G.arestas.push_back(temp);
 
         vertice v = {
                 i,              // nome
                 0,              // grau
-                vector<int>()   // adjacencias
+                set<int>()   // adjacencias
         };
 
         G.vertices.push_back(v);
@@ -149,32 +150,26 @@ vector<int> lerGrafo(char *nomeArquivo) {
 
         arquivo >> t >> x >> y;
 
-        G.arestas[x][y] = 1;
-        G.arestas[y][x] = 1;
+        G.arestas[x-1][y-1] = 1;
+        G.arestas[y-1][x-1] = 1;
 
-        G.vertices[x].grau++;
-        G.vertices[x].adjacencias.push_back(y);
+        G.vertices[x-1].grau++;
+        G.vertices[x-1].adjacencias.insert(y-1);
 
-        G.vertices[y].grau++;
-        G.vertices[y].adjacencias.push_back(x);
+        G.vertices[y-1].grau++;
+        G.vertices[y-1].adjacencias.insert(x-1);
 
     }
 
     arquivo.close();
 
-    //organiza vertices
-    for(int i=1; i<=G.nVertices; i++) {
-        sort(G.vertices[i].adjacencias.begin(), G.vertices[i].adjacencias.end());
-    }
-
-    sort(G.vertices.begin() + 1, G.vertices.end(), comparaGrau);
-    for(int i=1; i<=G.nVertices; i++) {
+    sort(G.vertices.begin(), G.vertices.end(), comparaGrau);
+    for(int i=0; i<G.nVertices; i++) {
         ordem.push_back(G.vertices[i].nome);
     }
     sort(G.vertices.begin(), G.vertices.end(), comparaNome);
 
     return ordem;
-
 
 }
 
@@ -183,12 +178,12 @@ void printGrafo(grafo g) {
 
     cout << "G = (" << g.nVertices << "," << g.nArestas << ")" << endl << endl;
 
-    for(int i=1; i<=g.nVertices; i++) {
+    for(int i=0; i<g.nVertices; i++) {
 
         cout << "Vertice " << g.vertices[i].nome << " (grau " << g.vertices[i].grau << "): ";
 
-        for(int j=0; j<g.vertices[i].grau; j++){
-            cout << g.vertices[i].adjacencias[j] << " ";
+        for(auto itt=g.vertices[i].adjacencias.begin(); itt!=g.vertices[i].adjacencias.end(); ++itt){
+            cout << *itt << " ";
         }
 
         cout << endl;
@@ -198,7 +193,7 @@ void printGrafo(grafo g) {
     cout << endl << "MATRIZ DE ADJACENCIAS: " << endl;
 
     cout << "    ";
-    for(int i=1; i<=g.nVertices; i++) {
+    for(int i=0; i<g.nVertices; i++) {
         cout << setw(2) << setfill(' ') << i << " ";
     }
     cout << endl << "  --";
@@ -206,9 +201,9 @@ void printGrafo(grafo g) {
         cout << "---";
     }
     cout << endl;
-    for(int j=1; j<=g.nVertices; j++) {
+    for(int j=0; j<g.nVertices; j++) {
         cout << setw(2) << setfill(' ') << j << "| ";
-        for(int i=1; i<=g.nVertices; i++) {
+        for(int i=0; i<g.nVertices; i++) {
             if (i==j) { cout << " - "; }
             else if (g.arestas[i][j]) { cout << " 1 "; }
             else { cout << " 0 "; }
@@ -224,9 +219,10 @@ void printGrafo(grafo g) {
 
 bool testaClique(grafo sG) {
 
-    for(int i=1; i<sG.nVertices; i++) {
-        for(int j=i+1; j<=sG.nVertices; j++) {
-            if(!G.arestas[sG.vertices[j].nome][sG.vertices[i].nome]) {
+    for(int i=0; i<sG.nVertices-1; i++) {
+        for(int j=i+1; j<sG.nVertices; j++) {
+            //if(!G.arestas[sG.vertices[j].nome][sG.vertices[i].nome]) {
+            if(!isAdjacente(sG.vertices[j], sG.vertices[i].nome)) {
                 return false;
             }
         }
@@ -249,20 +245,14 @@ void removeVertice(grafo *sG, int n) {
 
     for(int i=0; i<sG->nVertices; i++) {
 
-        sort(sG->vertices[i].adjacencias.begin(), sG->vertices[i].adjacencias.end());
-
         if(sG->vertices[i].nome == n) {
             sG->vertices.erase(sG->vertices.begin()+i);
             sG->nVertices--;
         }
 
         else{
-            for(int j=0; j<sG->vertices[i].grau && sG->vertices[i].adjacencias[j]<=n; j++) {
-                if(sG->vertices[i].adjacencias[j] == n) {
-                    sG->vertices[i].adjacencias.erase(sG->vertices[i].adjacencias.begin()+j);
-                    sG->vertices[i].grau--;
-                    sG->nArestas--;
-                }
+            if (sG->vertices[i].adjacencias.erase(n) == 1) {
+                sG->vertices[i].grau--;
             }
         }
 
@@ -293,5 +283,13 @@ grafo criaSubGrafo(vector<int> vertices) {
 
     return sG;
 
+}
+
+bool isAdjacente(vertice a, int b) {
+    auto it = a.adjacencias.find(b);
+    if(it == a.adjacencias.end()) {
+        return false;
+    }
+    return true;
 }
 
